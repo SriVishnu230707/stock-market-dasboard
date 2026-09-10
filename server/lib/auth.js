@@ -1,0 +1,41 @@
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+
+function signToken(user) {
+  return jwt.sign({ sub: user._id.toString(), email: user.email, name: user.name }, JWT_SECRET, {
+    expiresIn: "7d",
+  });
+}
+
+function verifyToken(token) {
+  return jwt.verify(token, JWT_SECRET);
+}
+
+function requireAuth(req, res, next) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: "Missing token" });
+  try {
+    req.user = verifyToken(token); // { sub, email, name }
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+
+// Socket.IO connections carry the JWT in the handshake auth payload rather
+// than a header, so the middleware below is a thin wrapper around the same
+// verifyToken() used for REST requests.
+function socketAuth(socket, next) {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error("Missing token"));
+  try {
+    socket.user = verifyToken(token);
+    next();
+  } catch {
+    next(new Error("Invalid or expired token"));
+  }
+}
+
+module.exports = { signToken, verifyToken, requireAuth, socketAuth, JWT_SECRET };

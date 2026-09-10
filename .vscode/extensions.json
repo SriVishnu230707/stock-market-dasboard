@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "mongodb.mongodb-vscode",
+    "mikestead.dotenv",
+    "rodrigovallades.es7-react-js-snippets",
+    "christian-kohler.npm-intellisense",
+    "editorconfig.editorconfig"
+  ]
+}
