@@ -9,7 +9,7 @@ const { seedStocksIfNeeded } = require("./lib/seed");
 const { socketAuth } = require("./lib/auth");
 const priceCache = require("./lib/priceCache");
 const alertIndex = require("./lib/alertIndex");
-const { startMarketFeed } = require("./lib/market");
+const { startMarketFeed, getMarketStatus } = require("./lib/market");
 
 const Stock = require("./models/Stock");
 const Alert = require("./models/Alert");
@@ -36,7 +36,13 @@ async function main() {
   app.use(cors({ origin: CLIENT_ORIGIN }));
   app.use(express.json());
 
-  app.get("/api/health", (req, res) => res.json({ ok: true, stocks: priceCache.all().length }));
+  app.get("/api/health", (req, res) =>
+    res.json({
+      ok: true,
+      stocks: priceCache.all().length,
+      market: getMarketStatus(),
+    })
+  );
   app.use("/api/auth", authRoutes);
   app.use("/api/stocks", stockRoutes);
   app.use("/api/watchlist", watchlistRoutes);

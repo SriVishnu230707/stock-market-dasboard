@@ -13,6 +13,12 @@ import { styles } from "./styles.js";
 export default function App() {
   const [session, setSession] = useState(() => loadSession());
   const [connected, setConnected] = useState(false);
+  const [marketStatus, setMarketStatus] = useState({
+    provider: "simulated",
+    source: "simulated",
+    configured: false,
+    usingFallback: true,
+  });
   const [tab, setTab] = useState("dashboard");
   const [selectedSymbol, setSelectedSymbol] = useState(null);
 
@@ -28,8 +34,11 @@ export default function App() {
     const socket = connectSocket(session.token);
 
     socket.on("connect", () => setConnected(true));
+    socket.on("reconnect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
     socket.on("connect_error", () => setConnected(false));
+    socket.on("reconnect_failed", () => setConnected(false));
+    socket.on("market-status", (status) => setMarketStatus(status));
     socket.on("tick", (snapshot) => setStocks(snapshot));
     socket.on("alert-triggered", (payload) => {
       setToast(payload);
@@ -120,6 +129,7 @@ export default function App() {
       setTab={setTab}
       alertBadge={activeAlertCount}
       connected={connected}
+      marketStatus={marketStatus}
       user={session.user}
       onLogout={handleLogout}
     >

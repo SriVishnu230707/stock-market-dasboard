@@ -8,23 +8,37 @@ let socket = null;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 export function connectSocket(token) {
-  if (socket) socket.disconnect();
+  if (socket && (socket.connected || socket.reconnecting)) {
+    return socket;
+  }
+
+  if (socket) {
+    socket.removeAllListeners();
+    socket.disconnect();
+  }
 
   socket = io(SOCKET_URL, {
     auth: { token },
+    autoConnect: true,
     reconnection: true,
     reconnectionAttempts: Infinity,
-    reconnectionDelay: 800,
+    reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    timeout: 15000,
-    transports: ["polling", "websocket"],
+    timeout: 20000,
+    transports: ["websocket", "polling"],
     upgrade: true,
-    rememberUpgrade: true,
+    forceNew: true,
   });
 
   socket.on("connect_error", () => {
     // Transient backend restarts and short downtimes are expected in dev.
     // Avoid noisy warnings in the console while Socket.IO retries.
+  });
+
+  socket.on("disconnect", (reason) => {
+    if (reason === "io server disconnect") {
+      socket.connect();
+    }
   });
 
   return socket;
@@ -35,6 +49,9 @@ export function getSocket() {
 }
 
 export function disconnectSocket() {
-  socket?.disconnect();
+  if (!socket) return;
+
+  socket.removeAllListeners();
+  socket.disconnect();
   socket = null;
 }

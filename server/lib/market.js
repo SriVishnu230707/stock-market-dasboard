@@ -7,37 +7,91 @@ const alertIndex = require("./alertIndex");
 const TICK_MS = 1500;
 const FLUSH_EVERY_N_TICKS = 20; // ~30s per candle at 1.5s ticks
 const YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
+const FINNHUB_QUOTE_URL = "https://finnhub.io/api/v1/quote";
 
 // candleBuf: symbol -> { open, high, low, close, volumeTicks, bucketStart }
 const candleBuf = new Map();
+const marketStatus = {
+  provider: "simulated",
+  source: "simulated",
+  configured: false,
+  usingFallback: true,
+};
 
-function normalizeYahooSymbol(symbol) {
-  const normalized = symbol.trim().toUpperCase();
-  return normalized.includes(".") || normalized.includes("^") ? normalized : `${normalized}.NS`;
+function normalizeTickerForProvider(symbol = "", provider = "yahoo") {
+  const normalized = String(symbol).trim().toUpperCase();
+  if (!normalized) return "";
+  if (normalized.includes(".") || normalized.includes("^")) return normalized;
+  if (provider === "finnhub" || provider === "simulated") return normalized;
+  return `${normalized}.NS`;
+}
+
+function resolveMarketDataConfig(env = process.env) {
+  const provider = (env.MARKET_DATA_PROVIDER || "simulated").toLowerCase();
+  const apiKey = env.MARKET_DATA_API_KEY || "";
+
+  return {
+    provider,
+    apiKey,
+    enabled: provider === "finnhub" ? Boolean(apiKey) : provider === "yahoo",
+  };
+}
+
+async function fetchFromYahoo(symbol) {
+  const url = `${YAHOO_CHART_URL}/${normalizeTickerForProvider(symbol, "yahoo")}?interval=1m&range=1d`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+
+  const quote = result.indicators?.quote?.[0];
+  const closes = (quote?.close || []).filter((value) => Number.isFinite(value));
+  if (!closes.length) return null;
+
+  const latest = Number(closes[closes.length - 1]);
+  const prevClose = Number(result.meta?.previousClose ?? closes[closes.length - 2] ?? latest);
+  if (!Number.isFinite(latest)) return null;
+
+  return { symbol, price: latest, prevClose };
+}
+
+async function fetchFromFinnhub(symbol, apiKey) {
+  if (!apiKey) return null;
+
+  const url = new URL(FINNHUB_QUOTE_URL);
+  url.searchParams.set("symbol", normalizeTickerForProvider(symbol, "finnhub"));
+  url.searchParams.set("token", apiKey);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const price = Number(data?.c);
+  const prevClose = Number(data?.pc);
+  if (!Number.isFinite(price)) return null;
+
+  return {
+    symbol,
+    price,
+    prevClose: Number.isFinite(prevClose) ? prevClose : price,
+  };
 }
 
 async function fetchLiveSnapshot() {
+  const { provider, apiKey } = resolveMarketDataConfig();
   const symbols = priceCache.all().map((s) => s.symbol);
   const responses = await Promise.all(
     symbols.map(async (symbol) => {
       try {
-        const url = `${YAHOO_CHART_URL}/${normalizeYahooSymbol(symbol)}?interval=1m&range=1d`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
-
-        const data = await res.json();
-        const result = data?.chart?.result?.[0];
-        if (!result) return null;
-
-        const quote = result.indicators?.quote?.[0];
-        const closes = (quote?.close || []).filter((value) => Number.isFinite(value));
-        if (!closes.length) return null;
-
-        const latest = Number(closes[closes.length - 1]);
-        const prevClose = Number(result.meta?.previousClose ?? closes[closes.length - 2] ?? latest);
-        if (!Number.isFinite(latest)) return null;
-
-        return { symbol, price: latest, prevClose };
+        if (provider === "finnhub") {
+          return await fetchFromFinnhub(symbol, apiKey);
+        }
+        if (provider === "yahoo") {
+          return await fetchFromYahoo(symbol);
+        }
+        return null;
       } catch (err) {
         console.warn(`[market] live fetch failed for ${symbol}:`, err.message);
         return null;
@@ -46,6 +100,17 @@ async function fetchLiveSnapshot() {
   );
 
   return responses.filter(Boolean);
+}
+
+function setMarketStatus({ provider, source, configured, usingFallback }) {
+  marketStatus.provider = provider || "simulated";
+  marketStatus.source = source || marketStatus.provider;
+  marketStatus.configured = Boolean(configured);
+  marketStatus.usingFallback = Boolean(usingFallback);
+}
+
+function getMarketStatus() {
+  return { ...marketStatus };
 }
 
 function updateCandleBuffer(symbol, price) {
@@ -110,22 +175,49 @@ function startMarketFeed(io) {
 
   setInterval(async () => {
     let snapshot;
+    let status = {
+      provider: "simulated",
+      source: "simulated",
+      configured: false,
+      usingFallback: true,
+    };
+
     try {
+      const config = resolveMarketDataConfig();
       const live = await fetchLiveSnapshot();
       if (live.length) {
         priceCache.applyLivePrices(live);
+        status = {
+          provider: config.provider,
+          source: config.provider,
+          configured: config.enabled,
+          usingFallback: false,
+        };
       } else {
         priceCache.tickAll();
+        status = {
+          provider: config.provider || "simulated",
+          source: "simulated",
+          configured: config.enabled,
+          usingFallback: true,
+        };
       }
       snapshot = priceCache.snapshot();
     } catch (err) {
       console.error("[market] live update failed, falling back to simulation", err.message);
       priceCache.tickAll();
+      status = {
+        provider: "simulated",
+        source: "simulated",
+        configured: false,
+        usingFallback: true,
+      };
       snapshot = priceCache.snapshot();
     }
 
-    tickCount += 1;
+    setMarketStatus(status);
     io.to("market").emit("tick", snapshot);
+    io.to("market").emit("market-status", getMarketStatus());
 
     for (const s of snapshot) {
       updateCandleBuffer(s.symbol, s.price);
@@ -148,4 +240,9 @@ function startMarketFeed(io) {
   }, TICK_MS);
 }
 
-module.exports = { startMarketFeed };
+module.exports = {
+  startMarketFeed,
+  normalizeTickerForProvider,
+  resolveMarketDataConfig,
+  getMarketStatus,
+};

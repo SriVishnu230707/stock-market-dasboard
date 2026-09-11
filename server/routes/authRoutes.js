@@ -25,7 +25,7 @@ router.post("/register", async (req, res) => {
     });
 
     // Give every new user a starter watchlist + paper-trading portfolio.
-    await Watchlist.create({ user: user._id, symbols: ["RELIANCE", "TCS", "INFY", "HDFCBANK"] });
+    await Watchlist.create({ user: user._id, symbols: ["AAPL", "MSFT", "NVDA", "AMZN"] });
     await Portfolio.create({ user: user._id });
 
     const token = signToken(user);

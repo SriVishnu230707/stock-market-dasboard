@@ -34,6 +34,7 @@ npm run dev
 ```
 
 You should see:
+
 ```
 [mongo] connected -> mongodb://127.0.0.1:27017/stockdash
 [seed] inserted 8 stocks
@@ -42,6 +43,18 @@ You should see:
 
 The stock list is seeded automatically on first boot (idempotent — safe to
 restart). Health check: `curl http://localhost:4000/api/health`.
+
+To switch from the built-in demo feed to a real market-data provider, set these
+values in `server/.env`:
+
+```env
+MARKET_DATA_PROVIDER=finnhub
+MARKET_DATA_API_KEY=your_key_here
+```
+
+Supported values are `simulated` (default), `yahoo`, and `finnhub`. If a real
+provider is configured and the key is valid, the app will use it; otherwise it
+falls back to the simulated market model so the dashboard still runs.
 
 ## 3. Run the client
 
@@ -130,14 +143,14 @@ extensions (`.vscode/extensions.json`). Current marketplace versions as of
 this writing — **check the Extensions panel for newer patches, since these
 update frequently**:
 
-| Extension | Marketplace ID | Version (verified) |
-|---|---|---|
-| ESLint | `dbaeumer.vscode-eslint` | 3.0.34 |
-| Prettier - Code formatter | `esbenp.prettier-vscode` | 12.4.0 |
-| MongoDB for VS Code | `mongodb.mongodb-vscode` | ~1.14.x |
-| DotENV | `mikestead.dotenv` | 1.0.1 |
-| ES7+ React/Redux/React-Native snippets | `rodrigovallades.es7-react-js-snippets` | latest (see note) |
-| EditorConfig for VS Code | `editorconfig.editorconfig` | latest |
+| Extension                              | Marketplace ID                          | Version (verified) |
+| -------------------------------------- | --------------------------------------- | ------------------ |
+| ESLint                                 | `dbaeumer.vscode-eslint`                | 3.0.34             |
+| Prettier - Code formatter              | `esbenp.prettier-vscode`                | 12.4.0             |
+| MongoDB for VS Code                    | `mongodb.mongodb-vscode`                | ~1.14.x            |
+| DotENV                                 | `mikestead.dotenv`                      | 1.0.1              |
+| ES7+ React/Redux/React-Native snippets | `rodrigovallades.es7-react-js-snippets` | latest (see note)  |
+| EditorConfig for VS Code               | `editorconfig.editorconfig`             | latest             |
 
 **Note on the React snippets extension:** the original `dsznajder.es7-react-js-snippets`
 package is no longer actively maintained; `rodrigovallades.es7-react-js-snippets`

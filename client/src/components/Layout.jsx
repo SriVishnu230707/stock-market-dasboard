@@ -9,7 +9,16 @@ const NAV = [
   { id: "portfolio", label: "Portfolio", icon: Briefcase },
 ];
 
-export default function Layout({ tab, setTab, alertBadge, connected, user, onLogout, children }) {
+export default function Layout({
+  tab,
+  setTab,
+  alertBadge,
+  connected,
+  marketStatus,
+  user,
+  onLogout,
+  children,
+}) {
   return (
     <div style={styles.app}>
       <aside style={styles.sidebar}>
@@ -38,7 +47,13 @@ export default function Layout({ tab, setTab, alertBadge, connected, user, onLog
           <div style={styles.userRow}>{user?.name}</div>
           <div style={styles.liveRow}>
             <Circle size={7} fill={connected ? "#2DD4A7" : "#E4667B"} stroke="none" />
-            <span>{connected ? "Live feed connected" : "Reconnecting…"}</span>
+            <span>
+              {connected
+                ? marketStatus?.usingFallback
+                  ? `Demo feed (${marketStatus.provider || "simulated"})`
+                  : `${(marketStatus.provider || "live").toUpperCase()} live feed`
+                : "Reconnecting…"}
+            </span>
           </div>
           <button style={styles.logoutBtn} onClick={onLogout}>
             Log out

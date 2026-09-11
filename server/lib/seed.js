@@ -3,66 +3,114 @@ const Stock = require("../models/Stock");
 const SECTORS = ["Banking", "IT", "Energy", "Auto", "Pharma"];
 
 const SEED_STOCKS = [
-  { symbol: "RELIANCE", name: "Reliance Industries", sector: "Energy", price: 2845.2 },
-  { symbol: "TCS", name: "Tata Consultancy", sector: "IT", price: 3421.0 },
-  { symbol: "INFY", name: "Infosys", sector: "IT", price: 1520.4 },
-  { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Banking", price: 1740.6 },
-  { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Banking", price: 1310.1 },
-  { symbol: "M&M", name: "Mahindra & Mahindra", sector: "Auto", price: 2980.0 },
-  { symbol: "TATAMOTORS", name: "Tata Motors", sector: "Auto", price: 964.3 },
-  { symbol: "SUNPHARMA", name: "Sun Pharma", sector: "Pharma", price: 1789.5 },
-  { symbol: "SBIN", name: "State Bank of India", sector: "Banking", price: 882.4 },
-  { symbol: "AXISBANK", name: "Axis Bank", sector: "Banking", price: 1120.7 },
-  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", sector: "Banking", price: 1818.9 },
-  { symbol: "BAJFINANCE", name: "Bajaj Finance", sector: "Finance", price: 7346.1 },
-  { symbol: "HDFCLIFE", name: "HDFC Life", sector: "Insurance", price: 638.5 },
-  { symbol: "LTIM", name: "LTIMindtree", sector: "IT", price: 5604.4 },
-  { symbol: "WIPRO", name: "Wipro", sector: "IT", price: 456.8 },
-  { symbol: "TECHM", name: "Tech Mahindra", sector: "IT", price: 1481.2 },
-  { symbol: "TITAN", name: "Titan Company", sector: "Consumer", price: 3594.1 },
-  { symbol: "HINDUNILVR", name: "Hindustan Unilever", sector: "FMCG", price: 2235.7 },
-  { symbol: "ITC", name: "ITC", sector: "FMCG", price: 470.9 },
-  { symbol: "NESTLEIND", name: "Nestle India", sector: "FMCG", price: 2480.8 },
-  { symbol: "ASIANPAINT", name: "Asian Paints", sector: "Consumer", price: 3112.3 },
-  { symbol: "ULTRACEMCO", name: "UltraTech Cement", sector: "Cement", price: 11194.5 },
-  { symbol: "LT", name: "Larsen & Toubro", sector: "Infrastructure", price: 3568.6 },
-  { symbol: "NTPC", name: "NTPC", sector: "Energy", price: 374.2 },
-  { symbol: "POWERGRID", name: "Power Grid", sector: "Energy", price: 303.6 },
-  { symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecom", price: 1442.5 },
-  { symbol: "INDUSINDBK", name: "IndusInd Bank", sector: "Banking", price: 1486.2 },
-  { symbol: "CIPLA", name: "Cipla", sector: "Pharma", price: 1450.4 },
-  { symbol: "DRREDDY", name: "Dr. Reddy's Labs", sector: "Pharma", price: 6592.2 },
-  { symbol: "APOLLOHOSP", name: "Apollo Hospitals", sector: "Healthcare", price: 5982.9 },
-  { symbol: "SHRIRAMFIN", name: "Shriram Finance", sector: "Finance", price: 2476.4 },
-  { symbol: "BHEL", name: "Bharat Heavy Electricals", sector: "Energy", price: 256.4 },
-  { symbol: "IOC", name: "Indian Oil", sector: "Energy", price: 150.2 },
-  { symbol: "MARUTI", name: "Maruti Suzuki", sector: "Auto", price: 12378.0 },
-  { symbol: "HEROMOTOCO", name: "Hero MotoCorp", sector: "Auto", price: 4668.7 },
+  { symbol: "AAPL", name: "Apple", sector: "Technology", price: 214.2 },
+  { symbol: "MSFT", name: "Microsoft", sector: "Technology", price: 426.8 },
+  { symbol: "AMZN", name: "Amazon", sector: "Consumer", price: 186.7 },
+  { symbol: "NVDA", name: "NVIDIA", sector: "Technology", price: 117.5 },
+  { symbol: "GOOGL", name: "Alphabet", sector: "Technology", price: 174.4 },
+  { symbol: "META", name: "Meta", sector: "Technology", price: 513.6 },
+  { symbol: "TSLA", name: "Tesla", sector: "Automotive", price: 227.1 },
+  { symbol: "NFLX", name: "Netflix", sector: "Media", price: 661.3 },
+  { symbol: "AMD", name: "AMD", sector: "Technology", price: 164.8 },
+  { symbol: "ORCL", name: "Oracle", sector: "Technology", price: 155.5 },
+  { symbol: "CRM", name: "Salesforce", sector: "Technology", price: 252.0 },
+  { symbol: "AVGO", name: "Broadcom", sector: "Technology", price: 181.9 },
+  { symbol: "SHOP", name: "Shopify", sector: "Technology", price: 58.6 },
+  { symbol: "PYPL", name: "PayPal", sector: "Fintech", price: 74.4 },
+  { symbol: "ADBE", name: "Adobe", sector: "Technology", price: 498.2 },
+  { symbol: "PINS", name: "Pinterest", sector: "Internet", price: 31.6 },
+  { symbol: "SNAP", name: "Snap", sector: "Internet", price: 15.9 },
+  { symbol: "DIS", name: "Disney", sector: "Media", price: 94.1 },
+  { symbol: "NKE", name: "Nike", sector: "Consumer", price: 91.7 },
+  { symbol: "COST", name: "Costco", sector: "Consumer", price: 844.5 },
+  { symbol: "WMT", name: "Walmart", sector: "Retail", price: 70.6 },
+  { symbol: "JPM", name: "JPMorgan Chase", sector: "Banking", price: 207.4 },
+  { symbol: "XOM", name: "Exxon Mobil", sector: "Energy", price: 114.6 },
+  { symbol: "CVX", name: "Chevron", sector: "Energy", price: 146.9 },
+  { symbol: "UNH", name: "UnitedHealth", sector: "Healthcare", price: 510.5 },
+  { symbol: "PFE", name: "Pfizer", sector: "Healthcare", price: 28.7 },
+  { symbol: "ABBV", name: "AbbVie", sector: "Healthcare", price: 175.6 },
+  { symbol: "TXN", name: "Texas Instruments", sector: "Technology", price: 190.8 },
+  { symbol: "TMUS", name: "T-Mobile", sector: "Telecom", price: 175.2 },
+  { symbol: "V", name: "Visa", sector: "Fintech", price: 280.1 },
+  { symbol: "MA", name: "Mastercard", sector: "Fintech", price: 510.2 },
+  { symbol: "BAC", name: "Bank of America", sector: "Banking", price: 41.2 },
+  { symbol: "CAT", name: "Caterpillar", sector: "Industrials", price: 340.8 },
+  { symbol: "HD", name: "Home Depot", sector: "Retail", price: 355.8 },
+  { symbol: "KO", name: "Coca-Cola", sector: "Consumer", price: 64.0 },
+  { symbol: "INTC", name: "Intel", sector: "Technology", price: 21.7 },
+  { symbol: "IBM", name: "IBM", sector: "Technology", price: 164.3 },
 ];
 
 // Idempotent: safe to call on every server boot. Only inserts stocks that
 // don't already exist, so restarting the server never resets live prices.
 async function seedStocksIfNeeded() {
   const existing = await Stock.find(
-    { symbol: { $in: SEED_STOCKS.map((s) => s.symbol) } },
-    { symbol: 1 }
+    {},
+    { symbol: 1, name: 1, sector: 1, price: 1, prevClose: 1, history: 1 }
   ).lean();
-  const existingSet = new Set(existing.map((s) => s.symbol));
-  const missing = SEED_STOCKS.filter((stock) => !existingSet.has(stock.symbol));
+  const targetMap = new Map(SEED_STOCKS.map((s) => [s.symbol, s]));
+  const staleSymbols = existing
+    .filter((doc) => !targetMap.has(doc.symbol))
+    .map((doc) => doc.symbol);
+  const missing = SEED_STOCKS.filter(
+    (stock) => !existing.some((doc) => doc.symbol === stock.symbol)
+  );
 
-  if (!missing.length) {
-    console.log(`[seed] all ${SEED_STOCKS.length} stocks already present`);
-    return;
+  const updates = [];
+  for (const stock of SEED_STOCKS) {
+    const current = existing.find((doc) => doc.symbol === stock.symbol);
+    if (!current) continue;
+
+    const needsUpdate =
+      current.name !== stock.name ||
+      current.sector !== stock.sector ||
+      Number(current.price) !== Number(stock.price);
+
+    if (needsUpdate) {
+      updates.push(
+        Stock.updateOne(
+          { symbol: stock.symbol },
+          {
+            $set: {
+              name: stock.name,
+              sector: stock.sector,
+              price: Number(stock.price),
+              prevClose: Number.isFinite(Number(current.prevClose))
+                ? Number(current.prevClose)
+                : Number(stock.price),
+              history: current.history?.length
+                ? current.history.slice(-120)
+                : [{ t: 0, p: Number(stock.price) }],
+            },
+          }
+        )
+      );
+    }
   }
 
-  await Stock.insertMany(
-    missing.map((s) => ({
-      ...s,
-      prevClose: s.price,
-      history: [{ t: 0, p: s.price }],
-    }))
+  if (staleSymbols.length) {
+    await Stock.deleteMany({ symbol: { $in: staleSymbols } });
+  }
+
+  if (missing.length) {
+    await Stock.insertMany(
+      missing.map((s) => ({
+        ...s,
+        prevClose: s.price,
+        history: [{ t: 0, p: s.price }],
+      }))
+    );
+  }
+
+  if (updates.length) {
+    await Promise.all(updates);
+  }
+
+  const finalCount = await Stock.countDocuments();
+  console.log(
+    `[seed] synced ${finalCount} stocks (${missing.length} inserted, ${staleSymbols.length} removed, ${updates.length} updated)`
   );
-  console.log(`[seed] inserted ${missing.length} stocks`);
 }
 
 module.exports = { seedStocksIfNeeded, SEED_STOCKS, SECTORS };
