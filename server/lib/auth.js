@@ -29,16 +29,22 @@ function requireAuth(req, res, next) {
 }
 
 // Socket.IO connections carry the JWT in the handshake auth payload rather
-// than a header, so the middleware below is a thin wrapper around the same
-// verifyToken() used for REST requests.
+// than a header. If a valid token is provided, socket.user is populated for
+// private rooms (like alerts); if missing or expired, the socket connects
+// as a guest to continue receiving public market ticker updates.
 function socketAuth(socket, next) {
   const token = socket.handshake.auth?.token;
-  if (!token) return next(new Error("Missing token"));
+  if (!token) {
+    socket.user = null;
+    return next();
+  }
   try {
     socket.user = verifyToken(token);
     next();
-  } catch {
-    next(new Error("Invalid or expired token"));
+  } catch (err) {
+    console.warn(`[socket] Auth token verification failed (${err.message}). Connecting as guest.`);
+    socket.user = null;
+    next();
   }
 }
 

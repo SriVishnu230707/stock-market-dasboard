@@ -56,12 +56,14 @@ async function main() {
 
   io.use(socketAuth);
   io.on("connection", (socket) => {
-    // Everyone gets the market tape; only this user's own alerts land in
-    // their private room. This is the "one feed, fanned out" architecture
-    // from the write-up, done with Socket.IO rooms.
+    // Everyone gets the market tape; only authenticated users' alerts land in
+    // their private room. This is the "one feed, fanned out" architecture.
     socket.join("market");
-    socket.join(`user:${socket.user.sub}`);
+    if (socket.user?.sub) {
+      socket.join(`user:${socket.user.sub}`);
+    }
     socket.emit("tick", priceCache.snapshot()); // immediate snapshot on connect
+    socket.emit("market-status", getMarketStatus()); // immediate market status on connect
 
     socket.on("disconnect", () => {});
   });

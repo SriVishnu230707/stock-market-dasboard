@@ -16,7 +16,7 @@
   Engineered with in-memory caching, non-blocking asynchronous market loops, $O(1)$ indexed alert evaluations, live WebSocket feeds, Web Audio alert synthesis, and interactive marked-to-market paper trading.
 </p>
 
-[Key Features](#-key-features) • [Architecture](#-system-architecture) • [Quick Start](#-quick-start) • [Live vs Simulated](#-real-time-market-feeds) • [API Reference](#-api--socket-specifications)
+[Key Features](#-key-features) • [Architecture](#-system-architecture) • [Codebase Deep Dive](CODEBASE_DEEP_DIVE.md) • [Quick Start](#-quick-start) • [Live vs Simulated](#-real-time-market-feeds) • [API Reference](#-api--socket-specifications)
 
 ---
 

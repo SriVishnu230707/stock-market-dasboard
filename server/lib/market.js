@@ -80,7 +80,11 @@ async function fetchFromYahoo(symbol) {
   );
   if (!Number.isFinite(latest)) return null;
 
-  return { symbol, price: latest, prevClose };
+  return {
+    symbol,
+    price: Math.round(latest * 100) / 100,
+    prevClose: Math.round(prevClose * 100) / 100,
+  };
 }
 
 async function fetchFromFinnhub(symbol, apiKey) {
@@ -136,6 +140,9 @@ async function syncLiveQuotesOnce() {
         })
       );
       results.push(...batchResults.filter(Boolean));
+      if (i + BATCH_SIZE < symbols.length) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
     }
 
     if (results.length > 0) {

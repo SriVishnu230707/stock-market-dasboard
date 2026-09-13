@@ -8,13 +8,17 @@ let socket = null;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 export function connectSocket(token) {
-  if (socket && (socket.connected || socket.reconnecting)) {
-    return socket;
-  }
-
   if (socket) {
-    socket.removeAllListeners();
-    socket.disconnect();
+    if (token) {
+      socket.auth = { token };
+    }
+    if (socket.connected || socket.connecting || socket.reconnecting) {
+      return socket;
+    }
+    if (socket.disconnected) {
+      socket.connect();
+      return socket;
+    }
   }
 
   socket = io(SOCKET_URL, {
@@ -27,12 +31,11 @@ export function connectSocket(token) {
     timeout: 20000,
     transports: ["websocket", "polling"],
     upgrade: true,
-    forceNew: true,
   });
 
-  socket.on("connect_error", () => {
-    // Transient backend restarts and short downtimes are expected in dev.
-    // Avoid noisy warnings in the console while Socket.IO retries.
+  socket.on("connect_error", (err) => {
+    // Helpful log for debugging network/auth connection issues in dev
+    console.warn("[socket] connection warning:", err?.message || "retrying...");
   });
 
   socket.on("disconnect", (reason) => {

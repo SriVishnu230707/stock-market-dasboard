@@ -94,11 +94,18 @@ export default function Layout({
         <div style={styles.sidebarFoot}>
           <div style={styles.userRow}>{user?.name}</div>
           <div style={styles.liveRow}>
-            <Circle size={7} fill={connected ? "#2DD4A7" : "#E4667B"} stroke="none" />
-            <span>
+            <Circle
+              size={7}
+              fill={connected ? "#2DD4A7" : "#E4667B"}
+              stroke="none"
+              style={{
+                filter: connected ? "drop-shadow(0 0 4px #2DD4A7)" : "drop-shadow(0 0 3px #E4667B)",
+              }}
+            />
+            <span style={{ fontWeight: 500 }}>
               {connected
                 ? marketStatus?.usingFallback
-                  ? `Demo feed (${marketStatus.provider || "simulated"})`
+                  ? `Live simulation (${marketStatus.provider || "simulated"})`
                   : `${(marketStatus.provider || "live").toUpperCase()} live feed`
                 : "Reconnecting…"}
             </span>

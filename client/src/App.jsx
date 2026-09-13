@@ -31,21 +31,30 @@ export default function App() {
   const [portfolio, setPortfolio] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const soundEnabledRef = React.useRef(soundEnabled);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
   // ---- Socket lifecycle: connect once per session -------------------------
   useEffect(() => {
     if (!session) return;
     const socket = connectSocket(session.token);
 
-    socket.on("connect", () => setConnected(true));
-    socket.on("reconnect", () => setConnected(true));
-    socket.on("disconnect", () => setConnected(false));
-    socket.on("connect_error", () => setConnected(false));
-    socket.on("reconnect_failed", () => setConnected(false));
-    socket.on("market-status", (status) => setMarketStatus(status));
-    socket.on("tick", (snapshot) => setStocks(snapshot));
-    socket.on("alert-triggered", (payload) => {
+    if (socket.connected) {
+      setConnected(true);
+    }
+
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+    const onMarketStatus = (status) => setMarketStatus(status);
+    const onTick = (snapshot) => {
+      setStocks(snapshot);
+      setConnected(true);
+    };
+    const onAlert = (payload) => {
       setToast(payload);
-      if (soundEnabled) {
+      if (soundEnabledRef.current) {
         playAlertChime();
       }
       setTimeout(() => setToast(null), 7000);
@@ -53,10 +62,28 @@ export default function App() {
         .getAlerts()
         .then(setAlerts)
         .catch(() => {});
-    });
+    };
 
-    return () => disconnectSocket();
-  }, [session, soundEnabled]);
+    socket.on("connect", onConnect);
+    socket.on("reconnect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onDisconnect);
+    socket.on("reconnect_failed", onDisconnect);
+    socket.on("market-status", onMarketStatus);
+    socket.on("tick", onTick);
+    socket.on("alert-triggered", onAlert);
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("reconnect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onDisconnect);
+      socket.off("reconnect_failed", onDisconnect);
+      socket.off("market-status", onMarketStatus);
+      socket.off("tick", onTick);
+      socket.off("alert-triggered", onAlert);
+    };
+  }, [session?.token]);
 
   // ---- Initial data load once authenticated --------------------------------
   useEffect(() => {
@@ -64,7 +91,11 @@ export default function App() {
     api
       .getWatchlist()
       .then(setWatchlist)
-      .catch(() => {});
+      .catch((err) => {
+        if (err?.message?.includes("401") || err?.message?.includes("token")) {
+          handleLogout();
+        }
+      });
     api
       .getAlerts()
       .then(setAlerts)
@@ -87,6 +118,7 @@ export default function App() {
     setWatchlist([]);
     setAlerts([]);
     setPortfolio(null);
+    setConnected(false);
   }
 
   function openStock(symbol) {
