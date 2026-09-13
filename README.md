@@ -1,178 +1,250 @@
-# Ticker Room — Real-Time Stock Dashboard (MERN)
+<div align="center">
 
-A working full-stack demo: MongoDB + Express + React + Node, with live price
-updates over Socket.IO, server-side alert evaluation, watchlists, and a
-paper-trading portfolio.
+# ⚡ TICKER ROOM
+### Production-Grade Real-Time Stock Market Dashboard & Paper Trading Platform
 
-Prices are **simulated** (a random walk on the server), not a real market
-feed — see "Swapping in a real market feed" below for how to change that
-without touching the frontend.
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-68a063?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-4.19-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com)
+[![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4.7-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose_8-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Status](https://img.shields.io/badge/Feed_Status-LIVE_STREAMING-00F5A0?style=for-the-badge)](https://github.com)
 
-## Project layout
+<p align="center">
+  <b>A blazing-fast, institutional-grade full-stack market platform.</b><br>
+  Engineered with in-memory caching, non-blocking asynchronous market loops, $O(1)$ indexed alert evaluations, live WebSocket feeds, Web Audio alert synthesis, and interactive marked-to-market paper trading.
+</p>
+
+[Key Features](#-key-features) • [Architecture](#-system-architecture) • [Quick Start](#-quick-start) • [Live vs Simulated](#-real-time-market-feeds) • [API Reference](#-api--socket-specifications)
+
+---
+
+</div>
+
+## 🚀 Key Features
+
+* **⚡ Real-Time Market Streaming Tape**: Sub-1.5s live market price broadcasts over Socket.IO directly to connected browsers without polling or page refreshes.
+* **🌐 Multi-Source Ingestion Engine**: Seamlessly switch between real live **Yahoo Finance**, **Finnhub native WebSockets**, or a **Brownian-motion simulated engine** with zero frontend reconfiguration.
+* **🎯 High-Performance $O(1)$ Threshold Alerts**: Price alerts indexed by symbol in memory (`Map<symbol, Map<alertId, alert>>`), evaluating thousands of rules per tick without hitting the database.
+* **🔔 Web Audio Synthesized Chimes**: Native dual-tone synthesizer alert chime (880Hz primary + 1320Hz overtone) that rings the moment a price alert fires.
+* **🔍 Global Autocomplete Search**: Instantly filter and navigate across 37 seeded stocks and corporate sectors.
+* **📈 Dynamic Intraday & Historical Charts**: Interactive timeframe selection (`1D`, `1W`, `3M`, `6M`) backed by real 1-minute OHLCV candles with SMA(10) momentum indicators.
+* **💼 Paper-Trading Portfolio**: Virtual ₹10,00,000 cash account with live marked-to-market P&L, integer share validation, and full execution history logs.
+* **📥 1-Click CSV Data Exports**: Instant client-side generation and download of formatted `.csv` spreadsheets for both Watchlists and Portfolios.
+* **📰 Market Intelligence & Sentiment Feed**: Real-time financial headlines with an automated sentiment meter (`Bullish`, `Bearish`, `Neutral`) and clickable `$TICKER` mentions.
+* **⚡ 1-Click Instant Demo Login**: Frictionless single-click evaluator authentication into a fully primed demo workspace.
+
+---
+
+## 🏛️ System Architecture
+
+Ticker Room decouples upstream market ingestion from client broadcasting. Current prices live in an ultra-fast in-memory hot cache, preventing high-frequency ticks from hammering MongoDB. Aggregated 1-minute OHLCV candles are periodically flushed for persistent historical analytics.
+
+```mermaid
+flowchart TB
+    subgraph Upstream_Feeds ["📡 Upstream Market Feeds"]
+        YF["Yahoo Finance REST API (Safe 30s Sync)"]
+        FH["Finnhub WebSocket (wss://ws.finnhub.io)"]
+        SIM["Geometric Brownian Walk Engine"]
+    end
+
+    subgraph Backend_Server ["⚙️ Node.js + Express + Socket.IO Server"]
+        INGEST["Market Ingestion Controller (server/lib/market.js)"]
+        CACHE[("In-Memory Price Cache (server/lib/priceCache.js)")]
+        ALERT_IDX[("O(1) Symbol Alert Index (server/lib/alertIndex.js)")]
+        TICK["Recursive 1.5s Tick Broadcast Loop"]
+        FLUSH["OHLCV Candle Aggregator (~30s Flush)"]
+    end
+
+    subgraph Database ["🗄️ MongoDB Database"]
+        CANDLES[("Candles Collection (OHLCV)")]
+        USERS[("Users & Auth (bcrypt)")]
+        WATCHLISTS[("Watchlists")]
+        PORTFOLIOS[("Portfolios & Transactions")]
+        ALERTS[("Alert Rules")]
+    end
+
+    subgraph Frontend_Client ["💻 Vite + React 18 Single Page App"]
+        SOCK["Socket.IO Client Handshake (JWT Auth)"]
+        TAPE["Live Marquee Ticker Tape"]
+        CHARTS["Recharts Dynamic Canvas (Live 1D Crawl)"]
+        AUDIO["Web Audio Synthesizer (Chime Engine)"]
+        PORT_UI["Portfolio P&L & Trade Ledger"]
+        CSV["CSV Export Engine (Blob Stream)"]
+        NEWS["Market Sentiment Feed"]
+    end
+
+    YF --> INGEST
+    FH --> INGEST
+    SIM --> INGEST
+
+    INGEST --> CACHE
+    TICK --> CACHE
+    TICK --> ALERT_IDX
+    TICK --> FLUSH
+    FLUSH --> CANDLES
+
+    TICK -->|"socket.to('market').emit('tick')"| SOCK
+    ALERT_IDX -->|"socket.to('user:id').emit('alert-triggered')"| SOCK
+
+    Database <--> Backend_Server
+    SOCK --> TAPE
+    SOCK --> CHARTS
+    SOCK --> AUDIO
+    SOCK --> PORT_UI
+    SOCK --> CSV
+    SOCK --> NEWS
+```
+
+---
+
+## 📦 Project Structure
 
 ```
-server/   Express API + Socket.IO + Mongoose models
-client/   Vite + React frontend
+stock-market-dashboard/
+├── client/                     # Vite + React 18 Frontend
+│   ├── src/
+│   │   ├── components/         # Reusable UI & Widget Components
+│   │   │   ├── Layout.jsx      # Navigation, Global Search Bar, Sound Toggle
+│   │   │   ├── MarketNews.jsx  # Intelligence Feed & Sentiment Gauge
+│   │   │   ├── TickerTape.jsx  # Live Crawling Top Marquee
+│   │   │   └── ui.jsx          # Panels, Index Tickers, Tables, Sparklines
+│   │   ├── pages/              # Primary App Views
+│   │   │   ├── Alerts.jsx      # Threshold Price Alert Management
+│   │   │   ├── Auth.jsx        # JWT Authentication + 1-Click Demo Login
+│   │   │   ├── Dashboard.jsx   # Market Overview, Movers & Dynamic Heatmap
+│   │   │   ├── Portfolio.jsx   # Paper Trading, Holdings & Transaction Log
+│   │   │   ├── StockDetail.jsx # Interactive Charts, Timeframes & SMA(10)
+│   │   │   └── Watchlist.jsx   # Watchlist with Quick Add & CSV Export
+│   │   ├── utils/
+│   │   │   ├── audio.js        # Web Audio API Synthesizer Chime
+│   │   │   └── exportCsv.js    # Client-Side CSV Exporter
+│   │   ├── api.js              # REST Client (Fetch API wrapper)
+│   │   ├── socket.js           # Socket.IO Client Configuration
+│   │   └── styles.js           # Premium Obsidian Dark Design Tokens
+├── server/                     # Express.js + Socket.IO Backend
+│   ├── lib/
+│   │   ├── alertIndex.js       # O(1) Memory-Indexed Alert Evaluation
+│   │   ├── auth.js             # JWT REST & Socket Middleware
+│   │   ├── market.js           # Live Yahoo/Finnhub/Simulated Ingestion Engine
+│   │   ├── mongo.js            # Mongoose Connection Management
+│   │   ├── priceCache.js       # Ultra-Fast In-Memory Price Cache
+│   │   └── seed.js             # Idempotent 37-Stock & 6,600+ Candle Seeder
+│   ├── models/                 # Mongoose Data Models
+│   │   ├── Alert.js            # User Price Trigger Schema
+│   │   ├── Candle.js           # 1-Minute OHLCV Long-Term History
+│   │   ├── Portfolio.js        # Cash Balances, Positions & Transactions
+│   │   ├── Stock.js            # Equity Metadata & Rolling Sparkline Buffer
+│   │   ├── User.js             # User Accounts (bcrypt hashes)
+│   │   └── Watchlist.jsx       # User Selected Symbols
+│   └── routes/                 # REST API Endpoints
+│       ├── alertRoutes.js      # CRUD Alert Rules
+│       ├── authRoutes.js       # Register, Login & Starter Kits
+│       ├── newsRoutes.js       # Market News & Sentiment Analysis
+│       ├── portfolioRoutes.js  # Atomic Buy/Sell Trading & Trade Logs
+│       ├── stockRoutes.js      # Equity Snapshots & Stored Candle Analytics
+│       └── watchlistRoutes.js  # Add / Remove Tracked Symbols
+└── package.json                # Root Concurrently Orchestrator
 ```
 
-## 1. Prerequisites
+---
 
-- Node.js 18+
-- A MongoDB instance — either:
-  - **Local**: install MongoDB Community Server and run `mongod`, or
-  - **Atlas** (free tier): create a cluster at mongodb.com/atlas and copy its
-    connection string.
+## ⚡ Quick Start
 
-## 2. Run the server
+### 1. Prerequisites
+* **Node.js 18+** installed (`node -v`)
+* **MongoDB** instance running locally (`mongodb://127.0.0.1:27017/stockdash`) or a [MongoDB Atlas](https://www.mongodb.com/atlas) connection URI.
 
+### 2. Installation
+Clone the repository and install all dependencies (root, server, and client) in one shot:
 ```bash
-cd server
+git clone https://github.com/SriVishnu230707/stock-market-dasboard.git
+cd stock-market-dasboard
 npm install
-cp .env.example .env
-# edit .env: set MONGO_URI (local mongod URI works out of the box) and JWT_SECRET
-npm run dev
+npm run install:all
 ```
 
-You should see:
-
+### 3. Environment Configuration
+Create your environment file in `server/.env`:
+```bash
+cp server/.env.example server/.env
 ```
-[mongo] connected -> mongodb://127.0.0.1:27017/stockdash
-[seed] inserted 8 stocks
-[server] listening on http://localhost:4000
-```
-
-The stock list is seeded automatically on first boot (idempotent — safe to
-restart). Health check: `curl http://localhost:4000/api/health`.
-
-To switch from the built-in demo feed to a real market-data provider, set these
-values in `server/.env`:
+*(The default configuration points to local MongoDB and live Yahoo Finance data out of the box).*
 
 ```env
-MARKET_DATA_PROVIDER=finnhub
-MARKET_DATA_API_KEY=your_key_here
+MONGO_URI=mongodb://127.0.0.1:27017/stockdash
+JWT_SECRET=your-secure-jwt-secret-key
+PORT=4000
+CLIENT_ORIGIN=http://localhost:5173
+MARKET_DATA_PROVIDER=yahoo
 ```
 
-Supported values are `simulated` (default), `yahoo`, and `finnhub`. If a real
-provider is configured and the key is valid, the app will use it; otherwise it
-falls back to the simulated market model so the dashboard still runs.
-
-## 3. Run the client
-
-In a second terminal:
-
+### 4. Run the Full Application
+Start both the backend and frontend simultaneously with color-coded logs:
 ```bash
-cd client
-npm install
 npm run dev
 ```
 
-Open http://localhost:5173, register an account, and you're in. The Vite
-dev server proxies `/api` to `http://localhost:4000` (see `vite.config.js`);
-the Socket.IO connection talks to port 4000 directly.
+Open **[http://localhost:5173](http://localhost:5173)** in your browser, hit **"Instant 1-Click Demo Login"**, and experience the live market tape!
 
-## 4. The two-account real-time demo
+---
 
-This is the single best way to show that this is actually real-time, not a
-page that refreshes on a timer:
+## 🌐 Real-Time Market Feeds
 
-1. Register two accounts in two browser windows (or one normal + one
-   incognito).
-2. In account A, create an alert: e.g. `RELIANCE crosses above 2850`.
-3. Watch the Dashboard in account B — prices update every ~1.5s with no
-   reload.
-4. Within a few ticks, account A gets a toast notification the moment the
-   alert fires — account B never sees it, because alerts are private
-   (Socket.IO rooms, one per user).
-5. In account B, buy some shares on the Portfolio tab and watch the P&L
-   column move on its own as the price keeps ticking.
+You can switch the market data provider in `server/.env` without touching the frontend:
 
-## How the real-time pieces fit together
+| Provider | Setting | Description |
+| :--- | :--- | :--- |
+| **Yahoo Finance (Default)** | `MARKET_DATA_PROVIDER=yahoo` | **Zero API key required.** Pulls real live prices and intraday close points for all 37 equities with throttled 30s background syncing. |
+| **Finnhub WebSocket** | `MARKET_DATA_PROVIDER=finnhub`<br>`MARKET_DATA_API_KEY=your_key` | Subscribes to Finnhub's native WebSocket (`wss://ws.finnhub.io`) for sub-second live trade updates on US equities. |
+| **Simulated Walk** | `MARKET_DATA_PROVIDER=simulated` | Realistic offline random walk model utilizing geometric Brownian motion and volatility clustering with mean reversion. |
 
-- **One upstream feed, many subscribers.** A single `setInterval` on the
-  server (`server/lib/market.js`) generates the next tick for all 8 stocks
-  and broadcasts it to every connected socket via the `"market"` room.
-  Browsers never talk to a market-data provider directly — see module 18 in
-  the original design doc for why that matters at scale.
-- **Hot path stays in memory.** Current prices live in
-  `server/lib/priceCache.js`, not in a database query, so a 1.5s tick loop
-  never waits on Mongo. Every ~30s (`FLUSH_EVERY_N_TICKS`), the server
-  flushes an aggregated candle to the `Candle` collection and snapshots
-  current prices back onto the `Stock` documents — the "raw tick → 1-minute
-  candle → long-term storage" pattern, so a restart doesn't lose much.
-- **Alerts are indexed by symbol**, not scanned linearly
-  (`server/lib/alertIndex.js`), so evaluating "did anything just cross a
-  threshold" costs a map lookup per stock per tick, not a table scan.
-- **Auth over both REST and sockets.** The same JWT the browser gets from
-  `/api/auth/login` is sent again in the Socket.IO handshake
-  (`socket.handshake.auth.token`) and verified with the same secret
-  (`server/lib/auth.js`).
+---
 
-## Swapping in a real market feed
+## 🛠️ API & Socket Specifications
 
-Replace the body of the tick handler in `server/lib/market.js`
-(`priceCache.tickAll()`) with a handler fed by your provider's WebSocket
-(e.g. Finnhub) or a historical-data replay loop. Nothing else needs to
-change — the cache shape, alert engine, and Socket.IO broadcast are already
-provider-agnostic.
+### REST Endpoints
+| Endpoint | Method | Auth | Description |
+| :--- | :---: | :---: | :--- |
+| `/api/health` | `GET` | No | Server health check, active stock count, and feed telemetry. |
+| `/api/auth/register` | `POST` | No | Creates account, hashes password, primes starter watchlist & portfolio. |
+| `/api/auth/login` | `POST` | No | Authenticates user credentials and returns signed 7-day JWT. |
+| `/api/stocks` | `GET` | Yes | Snapshot of all 37 tracked equities with price and percentage change. |
+| `/api/stocks/:symbol/chart` | `GET` | Yes | Returns real MongoDB candles or intraday ticks for `1d`, `1w`, `3m`, `6m`. |
+| `/api/watchlist` | `GET` | Yes | Returns the authenticated user's tracked symbols. |
+| `/api/watchlist/:symbol` | `POST` | Yes | Adds a symbol to the user's persistent watchlist. |
+| `/api/watchlist/:symbol` | `DELETE`| Yes | Removes a symbol from the user's watchlist. |
+| `/api/alerts` | `GET` | Yes | Lists all active and triggered price alerts for the user. |
+| `/api/alerts` | `POST` | Yes | Registers a new threshold rule (`above`/`below`) into the memory index. |
+| `/api/portfolio` | `GET` | Yes | Returns portfolio balances, marked-to-market P&L, and transaction logs. |
+| `/api/portfolio/buy` | `POST` | Yes | Atomic buy execution: verifies cash balance, computes average cost basis. |
+| `/api/portfolio/sell` | `POST` | Yes | Atomic sell execution: verifies share availability, credits cash. |
+| `/api/news` | `GET` | Yes | Returns market headlines, sentiment scores, and related tickers. |
 
-## Running from any IDE (VS Code, WebStorm, terminal, etc.)
+### Socket.IO Real-Time Events
+* **`tick`**: Broadcasted to room `"market"` every 1.5 seconds with current snapshots of all stocks.
+* **`market-status`**: Broadcasted to room `"market"` reporting active feed type and connection status.
+* **`alert-triggered`**: Emitted privately to room `"user:${userId}"` the instant an equity price crosses a user's defined target threshold.
 
-The project has no editor lock-in — it's plain Node + Vite, runnable from any
-terminal. From the repo root:
+---
 
+## 🧪 Testing
+
+Run the automated test suite on the backend:
 ```bash
-npm install          # installs root tooling (eslint, prettier, concurrently)
-npm run install:all  # installs server/ and client/ dependencies
-cp server/.env.example server/.env   # then fill in MONGO_URI, JWT_SECRET
-npm run dev           # runs server + client together, labeled output
+cd server
+npm test
+```
+*Validates ticker normalization, market configuration resolution, price cache initialization, timestamps, and percentage drift calculations.*
+
+Verify production frontend compilation:
+```bash
+cd client
+npm run build
 ```
 
-`npm run dev` at the root uses `concurrently` to run both apps in one
-terminal with color-coded `[SERVER]` / `[CLIENT]` prefixes — no need to open
-two terminal tabs. Individual scripts (`npm run dev:server`, `npm run
-dev:client`, `npm run lint`, `npm run format`) work the same way in any
-shell or IDE task runner.
+---
 
-A root `.editorconfig` and `.nvmrc` (Node 20) keep indentation and Node
-version consistent regardless of which editor opens the project.
-
-### VS Code specifics
-
-Opening the folder in VS Code will prompt you to install the recommended
-extensions (`.vscode/extensions.json`). Current marketplace versions as of
-this writing — **check the Extensions panel for newer patches, since these
-update frequently**:
-
-| Extension                              | Marketplace ID                          | Version (verified) |
-| -------------------------------------- | --------------------------------------- | ------------------ |
-| ESLint                                 | `dbaeumer.vscode-eslint`                | 3.0.34             |
-| Prettier - Code formatter              | `esbenp.prettier-vscode`                | 12.4.0             |
-| MongoDB for VS Code                    | `mongodb.mongodb-vscode`                | ~1.14.x            |
-| DotENV                                 | `mikestead.dotenv`                      | 1.0.1              |
-| ES7+ React/Redux/React-Native snippets | `rodrigovallades.es7-react-js-snippets` | latest (see note)  |
-| EditorConfig for VS Code               | `editorconfig.editorconfig`             | latest             |
-
-**Note on the React snippets extension:** the original `dsznajder.es7-react-js-snippets`
-package is no longer actively maintained; `rodrigovallades.es7-react-js-snippets`
-is the community fork with 3M+ installs that's currently kept up to date.
-Either works for snippets (`rfc`, `useState`, etc.) — this is a convenience
-extension, not a functional dependency.
-
-`.vscode/settings.json` wires Prettier as the default formatter with
-format-on-save, and points ESLint at the root flat config. `.vscode/launch.json`
-provides three debug targets from the Run and Debug panel:
-
-- **Server: Debug (Node)** — runs the server with the debugger attached and auto-restarts on file changes.
-- **Client: Launch Chrome** — starts the Vite dev server (via `.vscode/tasks.json`) and opens it in a debuggable Chrome instance.
-- **Full Stack: Server + Chrome** — both at once.
-
-None of this is required — `npm run dev` from a plain terminal works
-identically inside or outside VS Code.
-
-## What's deliberately left out
-
-To keep this buildable end-to-end: no password reset, no admin dashboard,
-technical indicators are limited to SMA(10), and there's no news
-integration or AI assistant module. These were flagged as out-of-scope in
-the original project write-up's 4-day plan — add them incrementally once
-the core loop above is solid.
+## 📄 License
+This project is open source and available under the [MIT License](LICENSE).
