@@ -7,21 +7,31 @@ const { signToken } = require("../lib/auth");
 
 const router = express.Router();
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body || {};
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
+    const trimmedEmail = (email || "").trim().toLowerCase();
+    const cleanName = (name || "").trim();
+
+    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
+      return res.status(400).json({ error: "Please provide a valid email address" });
     }
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing)
+    if (!password || typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+    }
+
+    const existing = await User.findOne({ email: trimmedEmail });
+    if (existing) {
       return res.status(409).json({ error: "An account with this email already exists" });
+    }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
-      email: email.toLowerCase(),
+      email: trimmedEmail,
       passwordHash,
-      name: name || email.split("@")[0],
+      name: cleanName || trimmedEmail.split("@")[0],
     });
 
     // Give every new user a starter watchlist + paper-trading portfolio.
@@ -31,14 +41,20 @@ router.post("/register", async (req, res) => {
     const token = signToken(user);
     res.status(201).json({ token, user: { id: user._id, email: user.email, name: user.name } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Registration failed" });
   }
 });
 
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    const user = await User.findOne({ email: (email || "").toLowerCase() });
+    const trimmedEmail = (email || "").trim().toLowerCase();
+
+    if (!trimmedEmail || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const user = await User.findOne({ email: trimmedEmail });
     if (!user) return res.status(401).json({ error: "Invalid email or password" });
 
     const ok = await bcrypt.compare(password, user.passwordHash);
@@ -47,7 +63,7 @@ router.post("/login", async (req, res) => {
     const token = signToken(user);
     res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Login failed" });
   }
 });
 

@@ -19,6 +19,7 @@ const stockRoutes = require("./routes/stockRoutes");
 const watchlistRoutes = require("./routes/watchlistRoutes");
 const alertRoutes = require("./routes/alertRoutes");
 const portfolioRoutes = require("./routes/portfolioRoutes");
+const newsRoutes = require("./routes/newsRoutes");
 
 const PORT = process.env.PORT || 4000;
 const CLIENT_ORIGIN = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",");
@@ -48,6 +49,7 @@ async function main() {
   app.use("/api/watchlist", watchlistRoutes);
   app.use("/api/alerts", alertRoutes);
   app.use("/api/portfolio", portfolioRoutes);
+  app.use("/api/news", newsRoutes);
 
   const httpServer = http.createServer(app);
   const io = new Server(httpServer, { cors: { origin: CLIENT_ORIGIN } });

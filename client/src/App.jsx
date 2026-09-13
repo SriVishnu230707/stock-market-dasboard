@@ -8,19 +8,22 @@ import StockDetail from "./pages/StockDetail.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import Alerts from "./pages/Alerts.jsx";
 import Portfolio from "./pages/Portfolio.jsx";
-import { styles } from "./styles.js";
+import MarketNews from "./components/MarketNews.jsx";
+import { playAlertChime } from "./utils/audio.js";
+import { styles, COLORS } from "./styles.js";
 
 export default function App() {
   const [session, setSession] = useState(() => loadSession());
   const [connected, setConnected] = useState(false);
   const [marketStatus, setMarketStatus] = useState({
-    provider: "simulated",
-    source: "simulated",
-    configured: false,
-    usingFallback: true,
+    provider: "yahoo",
+    source: "yahoo-rest",
+    configured: true,
+    usingFallback: false,
   });
   const [tab, setTab] = useState("dashboard");
   const [selectedSymbol, setSelectedSymbol] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const [stocks, setStocks] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
@@ -42,7 +45,10 @@ export default function App() {
     socket.on("tick", (snapshot) => setStocks(snapshot));
     socket.on("alert-triggered", (payload) => {
       setToast(payload);
-      setTimeout(() => setToast(null), 6000);
+      if (soundEnabled) {
+        playAlertChime();
+      }
+      setTimeout(() => setToast(null), 7000);
       api
         .getAlerts()
         .then(setAlerts)
@@ -50,7 +56,7 @@ export default function App() {
     });
 
     return () => disconnectSocket();
-  }, [session]);
+  }, [session, soundEnabled]);
 
   // ---- Initial data load once authenticated --------------------------------
   useEffect(() => {
@@ -131,16 +137,63 @@ export default function App() {
       connected={connected}
       marketStatus={marketStatus}
       user={session.user}
+      stocks={stocks}
+      onOpenStock={openStock}
+      soundEnabled={soundEnabled}
+      onToggleSound={() => setSoundEnabled((s) => !s)}
       onLogout={handleLogout}
     >
       {toast && (
-        <div style={styles.toast}>
-          <strong>{toast.symbol}</strong> crossed {toast.direction} ₹{toast.target} — now ₹
-          {toast.price.toFixed(2)}
+        <div
+          style={{
+            ...styles.toast,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            borderLeft: `4px solid ${COLORS.amber}`,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontWeight: 700,
+                color: COLORS.amber,
+                fontSize: 11.5,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 2,
+              }}
+            >
+              🔔 Price Alert Triggered
+            </div>
+            <div>
+              <strong>{toast.symbol}</strong> crossed {toast.direction} ₹{toast.target} — now ₹
+              {toast.price.toFixed(2)}
+            </div>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: COLORS.textMuted,
+              cursor: "pointer",
+              fontSize: 15,
+              padding: "2px 6px",
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {tab === "dashboard" && <Dashboard stocks={stocks} onOpen={openStock} />}
+      {tab === "dashboard" && (
+        <div>
+          <Dashboard stocks={stocks} onOpen={openStock} />
+          <MarketNews onOpenStock={openStock} />
+        </div>
+      )}
       {tab === "stock" && (
         <StockDetail
           stock={selectedStock}
@@ -163,6 +216,7 @@ export default function App() {
       {tab === "portfolio" && (
         <Portfolio portfolio={portfolio} stocks={stocks} onBuy={buy} onSell={sell} />
       )}
+      {tab === "news" && <MarketNews onOpenStock={openStock} />}
     </Layout>
   );
 }

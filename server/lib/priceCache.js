@@ -13,6 +13,7 @@ const cache = new Map(); // symbol -> { symbol, name, sector, price, prevClose, 
 
 function initFromDocs(stockDocs) {
   cache.clear();
+  const now = Date.now();
   for (const s of stockDocs) {
     cache.set(s.symbol, {
       symbol: s.symbol,
@@ -20,31 +21,38 @@ function initFromDocs(stockDocs) {
       sector: s.sector,
       price: s.price,
       prevClose: s.prevClose,
-      history: s.history?.length ? s.history.slice(-HISTORY_LIMIT) : [{ t: 0, p: s.price }],
+      history: s.history?.length
+        ? s.history.slice(-HISTORY_LIMIT)
+        : [{ t: now, p: s.price }],
     });
   }
 }
 
-function randomWalk(price) {
-  const drift = (Math.random() - 0.5) * price * 0.004;
-  return Math.max(1, +(price + drift).toFixed(2));
+function randomWalk(price, prevClose) {
+  // Mean-reversion pull towards prevClose (0.15%), plus Brownian random shock (-0.35% to +0.35%)
+  const meanReversion = prevClose ? (prevClose - price) * 0.0015 : 0;
+  const shock = (Math.random() - 0.498) * price * 0.005;
+  const next = price + meanReversion + shock;
+  return Math.max(1, Number(next.toFixed(2)));
 }
 
 function tickAll() {
+  const now = Date.now();
   for (const s of cache.values()) {
-    s.price = randomWalk(s.price);
-    s.history.push({ t: s.history.length, p: s.price });
+    s.price = randomWalk(s.price, s.prevClose);
+    s.history.push({ t: now, p: s.price });
     if (s.history.length > HISTORY_LIMIT) s.history.shift();
   }
 }
 
 function applyLivePrices(entries) {
+  const now = Date.now();
   for (const { symbol, price, prevClose } of entries) {
     const s = cache.get(symbol.toUpperCase());
     if (!s) continue;
     s.price = Number(price);
     if (Number.isFinite(prevClose)) s.prevClose = Number(prevClose);
-    s.history.push({ t: s.history.length, p: s.price });
+    s.history.push({ t: now, p: s.price });
     if (s.history.length > HISTORY_LIMIT) s.history.shift();
   }
 }

@@ -39,6 +39,8 @@ export const api = {
   getPortfolio: () => request("/portfolio"),
   buy: (payload) => request("/portfolio/buy", { method: "POST", body: payload }),
   sell: (payload) => request("/portfolio/sell", { method: "POST", body: payload }),
+
+  getNews: (category = "") => request(`/news${category ? `?category=${category}` : ""}`),
 };
 
 export function saveSession({ token, user }) {

@@ -1,4 +1,5 @@
 const Stock = require("../models/Stock");
+const Candle = require("../models/Candle");
 
 const SECTORS = ["Banking", "IT", "Energy", "Auto", "Pharma"];
 
@@ -107,10 +108,50 @@ async function seedStocksIfNeeded() {
     await Promise.all(updates);
   }
 
+  await seedCandlesIfNeeded();
+
   const finalCount = await Stock.countDocuments();
   console.log(
     `[seed] synced ${finalCount} stocks (${missing.length} inserted, ${staleSymbols.length} removed, ${updates.length} updated)`
   );
+}
+
+async function seedCandlesIfNeeded() {
+  const count = await Candle.countDocuments();
+  if (count >= 100) return;
+
+  const now = Date.now();
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const candleDocs = [];
+
+  for (const stock of SEED_STOCKS) {
+    let currentPrice = Number(stock.price);
+    const points = 180;
+    for (let d = points; d >= 0; d--) {
+      const bucketStart = new Date(now - d * ONE_DAY_MS);
+      const dayVariance = (Math.random() - 0.495) * 0.025 * currentPrice;
+      const open = Number(Math.max(1, currentPrice - dayVariance * 0.5).toFixed(2));
+      const close = Number(Math.max(1, currentPrice + dayVariance * 0.5).toFixed(2));
+      const high = Number((Math.max(open, close) + Math.random() * 0.015 * currentPrice).toFixed(2));
+      const low = Number(Math.max(0.5, Math.min(open, close) - Math.random() * 0.015 * currentPrice).toFixed(2));
+      currentPrice = close;
+
+      candleDocs.push({
+        symbol: stock.symbol,
+        open,
+        high,
+        low,
+        close,
+        volumeTicks: Math.floor(200 + Math.random() * 1500),
+        bucketStart,
+      });
+    }
+  }
+
+  if (candleDocs.length) {
+    await Candle.insertMany(candleDocs);
+    console.log(`[seed] inserted ${candleDocs.length} historical candles for analytics`);
+  }
 }
 
 module.exports = { seedStocksIfNeeded, SEED_STOCKS, SECTORS };

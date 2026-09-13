@@ -2,6 +2,10 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 
+if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "dev-secret-change-me")) {
+  console.warn("[security] WARNING: Insecure default JWT_SECRET detected in production! Set JWT_SECRET in .env");
+}
+
 function signToken(user) {
   return jwt.sign({ sub: user._id.toString(), email: user.email, name: user.name }, JWT_SECRET, {
     expiresIn: "7d",
